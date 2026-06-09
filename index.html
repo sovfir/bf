@@ -98,7 +98,7 @@ const progressText = document.getElementById('progress-text');
     chunks.push(value);
     received += value.length;
     if (contentLength) {
-      const pct = Math.round((received / contentLength) * 100);
+      const pct = Math.min(99, Math.round((received / contentLength) * 100));
       bar.style.width = pct + '%';
       progressText.textContent = 'Загрузка… ' + pct + '%';
     } else {
