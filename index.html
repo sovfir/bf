@@ -62,7 +62,7 @@
     chunks.push(value);
     received += value.length;
     if (total > 0) {
-      pctEl.textContent = Math.round(received / total * 100) + '%';
+      pctEl.textContent = Math.min(99, Math.round(received / total * 100)) + '%';
     } else {
       pctEl.textContent = Math.round(received / 1024) + ' KB';
     }
