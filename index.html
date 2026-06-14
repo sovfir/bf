@@ -2,26 +2,93 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>BF — Планета полная разлук</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%231a1a2e'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='18' font-weight='bold' fill='%234488ff'%3EЭЖ%3C/text%3E%3C/svg%3E">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-  body { display: flex; justify-content: center; align-items: center; }
+  body { display: flex; justify-content: center; align-items: center; flex-direction: column; }
   canvas { display: block; max-width: 100vw; max-height: 100vh; }
+
+  #loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    color: #4488ff;
+    font-family: sans-serif;
+  }
+  #loader .label {
+    font-size: 14px;
+    opacity: 0.7;
+  }
+  #loader .bar-track {
+    width: 240px;
+    height: 6px;
+    background: #1a1a2e;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #loader .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: #4488ff;
+    border-radius: 3px;
+    transition: width 0.2s ease;
+  }
+  #loader .pct {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
 </style>
 <script src="wasm_exec.js"></script>
 <script>
 "use strict";
 (async () => {
+  const loader = document.createElement('div');
+  loader.id = 'loader';
+  loader.innerHTML = `
+    <div class="label">Загрузка игры…</div>
+    <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
+    <div class="pct" id="pct">0%</div>
+  `;
+  document.body.appendChild(loader);
+
+  const bar = document.getElementById('bar');
+  const pct = document.getElementById('pct');
+
   const resp = await fetch("game.wasm");
   if (!resp.ok) {
-    const pre = document.createElement('pre');
-    pre.innerText = await resp.text();
-    document.body.appendChild(pre);
+    loader.innerHTML = '<pre style="color:#f44">' + await resp.text() + '</pre>';
     return;
   }
+
+  const total = parseInt(resp.headers.get('Content-Length') || '0', 10);
+  let loaded = 0;
+  const reader = resp.body.getReader();
+
+  // Read the full response into a buffer while tracking progress
+  const chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    if (total > 0) {
+      const p = Math.round(loaded / total * 100);
+      bar.style.width = p + '%';
+      pct.textContent = p + '%';
+    }
+  }
+
+  // Combine chunks into a single ArrayBuffer
+  const blob = new Blob(chunks);
+  const wasmBytes = await blob.arrayBuffer();
+
+  loader.remove();
+
   const go = new Go();
   go.argv = ["game.wasm"];
-  const result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+  const result = await WebAssembly.instantiate(wasmBytes, go.importObject);
   go.run(result.instance);
 })();
 </script>
