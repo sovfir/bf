@@ -21,23 +21,16 @@
     font-size: 14px;
     opacity: 0.7;
   }
-  #loader .bar-track {
-    width: 240px;
-    height: 6px;
-    background: #1a1a2e;
-    border-radius: 3px;
-    overflow: hidden;
+  #loader .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #1a1a2e;
+    border-top-color: #4488ff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
   }
-  #loader .bar-fill {
-    height: 100%;
-    width: 0%;
-    background: #4488ff;
-    border-radius: 3px;
-    transition: width 0.2s ease;
-  }
-  #loader .pct {
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style>
 <script src="wasm_exec.js"></script>
@@ -46,15 +39,8 @@
 (async () => {
   const loader = document.createElement('div');
   loader.id = 'loader';
-  loader.innerHTML = `
-    <div class="label">Загрузка игры…</div>
-    <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
-    <div class="pct" id="pct">0%</div>
-  `;
+  loader.innerHTML = '<div class="spinner"></div><div class="label">Загрузка игры…</div>';
   document.body.appendChild(loader);
-
-  const bar = document.getElementById('bar');
-  const pct = document.getElementById('pct');
 
   const resp = await fetch("game.wasm");
   if (!resp.ok) {
@@ -62,33 +48,10 @@
     return;
   }
 
-  const total = parseInt(resp.headers.get('Content-Length') || '0', 10);
-  let loaded = 0;
-  const reader = resp.body.getReader();
-
-  // Read the full response into a buffer while tracking progress
-  const chunks = [];
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.length;
-    if (total > 0) {
-      const p = Math.round(loaded / total * 100);
-      bar.style.width = p + '%';
-      pct.textContent = p + '%';
-    }
-  }
-
-  // Combine chunks into a single ArrayBuffer
-  const blob = new Blob(chunks);
-  const wasmBytes = await blob.arrayBuffer();
-
-  loader.remove();
-
   const go = new Go();
   go.argv = ["game.wasm"];
-  const result = await WebAssembly.instantiate(wasmBytes, go.importObject);
+  const result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+  loader.remove();
   go.run(result.instance);
 })();
 </script>
