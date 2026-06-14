@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Варианты подсветки препятствий</title>
+<style>
+  body { background:#222; color:#fff; font:16px sans-serif; display:flex; flex-direction:column; align-items:center; padding:20px; }
+  .row { display:flex; gap:20px; flex-wrap:wrap; justify-content:center; margin:20px 0; }
+  .card { background:#1a1a2e; border-radius:12px; padding:16px; text-align:center; width:560px; }
+  .card canvas { border-radius:8px; background:#0a0a1a; display:block; margin:0 auto; }
+  .card h3 { margin:8px 0 4px; font-size:15px; }
+  .card p { margin:0; font-size:12px; opacity:.7; }
+</style>
+</head>
+<body>
+<h2>🎯 Как выделить препятствия</h2>
+<p style="margin:0 0 10px;opacity:.7">На каждом варианте три препятствия: Идол (красный), Блок (коричневый), Имп (алый) — на фоне, похожем на игру</p>
+<div class="row" id="demos"></div>
+<p style="margin-top:10px;font-size:13px;opacity:.5">Напиши номер варианта (1-4) — я внедрю его в игру</p>
+
+<script>
+const variants = [
+  { id:'glow',   label:'1. Свечение (glow)', desc:'Оранжевая обводка вокруг — форма читается всегда' },
+  { id:'shadow', label:'2. Тень (drop shadow)', desc:'Тёмная копия со смещением — объём, но может слиться' },
+  { id:'backlit', label:'3. Подсветка сзади', desc:'Синее пятно под объектом — подсветка как в платформерах' },
+  { id:'pulse',  label:'4. Мерцание (pulse)', desc:'Пульсирующая яркость — привлекает внимание' },
+];
+
+const COLORS = ['#ff6644', '#998866', '#ff4444'];
+const SHAPES = [
+  { w:28, h:70 },  // idol — tall
+  { w:40, h:40 },  // block — square
+  { w:60, h:35 },  // imp — wide
+];
+
+function glowPass(ctx, ox, oy, ow, oh, color) {
+  for(let i=4; i>0; i--) {
+    ctx.globalAlpha = 0.08 * (5-i);
+    ctx.fillStyle = '#ff8800';
+    ctx.beginPath();
+    ctx.roundRect(ox-i*2, oy-i*2, ow+i*4, oh+i*4, 4);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(ox, oy, ow, oh, 4); ctx.fill();
+}
+
+function shadowPass(ctx, ox, oy, ow, oh, color) {
+  ctx.globalAlpha = 0.4;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.roundRect(ox+5, oy+5, ow, oh, 4); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(ox, oy, ow, oh, 4); ctx.fill();
+}
+
+function backlitPass(ctx, ox, oy, ow, oh, color) {
+  ctx.globalAlpha = 0.2 + 0.1 * Math.sin(Date.now()/800);
+  ctx.fillStyle = '#4488ff';
+  ctx.beginPath();
+  ctx.arc(ox+ow/2, oy+oh/2, Math.max(ow,oh)*0.9, 0, Math.PI*2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(ox, oy, ow, oh, 4); ctx.fill();
+}
+
+function pulsePass(ctx, ox, oy, ow, oh, color) {
+  const p = 0.6 + 0.4 * Math.sin(Date.now()/200);
+  ctx.globalAlpha = p;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(ox, oy, ow, oh, 4); ctx.fill();
+  ctx.globalAlpha = 1;
+  if(p > 0.8) {
+    ctx.strokeStyle = '#ff4400';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+const PASSES = [glowPass, shadowPass, backlitPass, pulsePass];
+
+const container = document.getElementById('demos');
+
+variants.forEach((v, vi)=>{
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<canvas width="560" height="220"></canvas>
+    <h3>${v.label}</h3><p>${v.desc}</p>`;
+  container.appendChild(card);
+  
+  const canvas = card.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  function draw() {
+    // background
+    const g = ctx.createLinearGradient(0,0,0,220);
+    g.addColorStop(0,'#0a0a2e'); g.addColorStop(.4,'#1a1a3e');
+    g.addColorStop(.7,'#2a2a1a'); g.addColorStop(1,'#3a3a2a');
+    ctx.fillStyle = g; ctx.fillRect(0,0,560,220);
+    
+    // bridge/wall line
+    ctx.fillStyle = '#2a2a3a'; ctx.fillRect(0,150,560,60);
+    ctx.fillStyle = '#4a4a5a'; ctx.fillRect(0,155,560,3);
+    ctx.fillStyle = '#6a6a4a'; ctx.fillRect(0,150,560,2);
+    
+    // three obstacles evenly spaced
+    SHAPES.forEach((s, oi)=>{
+      const ox = 60 + oi * 180;
+      const oy = 130 - s.h;
+      PASSES[vi](ctx, ox, oy, s.w, s.h, COLORS[oi]);
+    });
+    
+    requestAnimationFrame(draw);
+  }
+  draw();
+});
+</script>
+</body>
+</html>
