@@ -47,6 +47,7 @@
   const go = new Go();
   go.argv = ["game.wasm"];
   const result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+  document.getElementById('loading').remove();
   go.run(result.instance);
 })();
 </script>
