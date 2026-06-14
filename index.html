@@ -75,6 +75,10 @@
 
   const go = new Go();
   go.argv = ["game.wasm"];
+  // compiling...
+  const labelEl = document.querySelector('#loading .label');
+  labelEl.textContent = 'Компиляция…';
+  pctEl.textContent = '99% ✓';
   const result = await WebAssembly.instantiate(buf.buffer, go.importObject);
   document.getElementById('loading').remove();
   go.run(result.instance);
